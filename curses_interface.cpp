@@ -66,7 +66,6 @@ int term_init(){
         };
     getmaxyx(window, row, col);
     cbreak();
-    noecho();
     nodelay(stdscr, true);
     nonl();
     intrflush(stdscr, FALSE);
@@ -88,13 +87,15 @@ void update_input_window(std::string output_string ){
     wprintw(input_window, output_string.c_str());
     wrefresh(input_window);
 
+
 };
 
 void update_output_windowfrominput(std::string output_string ){
     touchwin(window);
     output_string += "\n";
     wprintw(output_window, output_string.c_str());
-    wrefresh(output_window);
+    wrefresh();
+
 };
 
 void process_output_buffer(){
@@ -118,10 +119,11 @@ void shutdown_server(){
 
 };
 
-string get_command(){
+void get_command(){
     INPUT_FLAG == true;
     while (INPUT_FLAG == true) {
         char input_character = getch();
+        input_buffer.push_back(input_character)
         if (input_character == ERR) {
 
         } else if(input_character == '\r'){
@@ -130,28 +132,27 @@ string get_command(){
         } else {
             input_buffer.push_back(input_character);
             if (input_character == '^G') {
-                    if (input_buffer.empty()) {
+                    if ( input_buffer.empty()) {
 
                     } else {
                         input_buffer.pop_back();
                         std::string input_buffer_string(input_buffer.begin(),input_buffer.end());
-                        update_commandline(input_buffer_string);
+                        //update_commandline(input_buffer_string);
                     };
             } else if (input_character == KEY_DL) {
                 input_buffer.clear();
             };
             std::string input_buffer_string(input_buffer.begin(),input_buffer.end());
-            update_input_window(input_buffer_string)
+            //update_input_window(input_buffer_string);
         };
 
     };
     std::string command(input_buffer.begin(),input_buffer.end());
     input_buffer.clear();
-    return command;
 };
 
 
-int main(int argc, char* argv[])
+int main(int argc, char* argv[]){
 
     term_init();
     fflush(stdin);
@@ -162,9 +163,7 @@ int main(int argc, char* argv[])
     while(1)
     {
         signal(SIGWINCH, resizehandler);
-        std::string input(get_command());
         get_command();
-        };
+    };
     endwin();
     };
-};
