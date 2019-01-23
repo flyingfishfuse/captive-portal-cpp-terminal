@@ -53,7 +53,6 @@ void errprint(auto err) {
 
 
 int term_init(){
-    //some error handling with a custom message added
     try {
         window = initscr();
         if (window == NULL ) {
@@ -104,7 +103,6 @@ void process_output_buffer(){
 };
 
 
-//redraws the window and contents when you resize the terminal window.
 void resizehandler(int sig){
     int new_display_height;
     int new_display_width;
@@ -114,17 +112,12 @@ void resizehandler(int sig){
 };
 
 void shutdown_server(){
-    //stop input from happening
     INPUT_FLAG = false;
     std::string message("SHUTTING DOWN");
     update_output_window(message);
-    // do stuff to clean up and printto screen the stuff captured and what not
 
 };
 
-//we want to be able to block input from time to time for sensitive commands.
-//having a flad to turn off the function and a function to call to turn it back on is uiseful for that
-//you can have the function change flags or do it yourself everytime you call the function.
 string get_command(){
     INPUT_FLAG == true;
     while (INPUT_FLAG == true) {
@@ -158,12 +151,7 @@ string get_command(){
 };
 
 
-int main(int argc, char* argv[]) {
-// we put things we only want done at the start at the top
-// once the loops start, shit gets real.
-// even though main() is a "loop", its easier to keep things functional  and orderly
-// by reading it like a book instead of like a mobeius strip. no looping main() please.
-// its got a start and a finish. unless you need otherwise.
+int main(int argc, char* argv[])
 
     term_init();
     fflush(stdin);
@@ -171,12 +159,8 @@ int main(int argc, char* argv[]) {
     scrollok(output_window, true);
     output_window = subwin(window, row - 1, col, 0, 0);
     input_window = subwin(window, 1, col, row - 1, 0);
-
-    //beginning thw main loop in the main loop, remember ,its gonna keep looping from top to bottom constantly
-    // until it hits a break or exit()
     while(1)
     {
-        //if we get a window resize signal, redraw the curses display
         signal(SIGWINCH, resizehandler);
         std::string input(get_command());
         get_command();
