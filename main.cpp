@@ -1,21 +1,8 @@
-#include </usr/include/stdio.h>
 #include <boost/program_options.hpp>
-#include <string>
-#include <algorithm>
-#include <iostream>
-#include <fstream>
-#include <iterator>
-#include <stdio.h>
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
-#include <cstdlib>
-#include <bits/stdc++.h>
-#include <stdlib.h>
 #include <boost/network/uri.hpp>
-//libhttpserver for c++ on google.
 #include <httpserver.hpp>
-#include <thread>
-#include <unistd.h>
 #include "everythingelse.hpp"
 
 //currently refactoring to include ncurses and a menu and all sorts of goodies in a menu system
@@ -35,7 +22,10 @@ using namespace httpserver;
 namespace filesystem = boost::filesystem;
 namespace options    = boost::program_options;
 namespace url_parse  = boost::network::uri;
-
+int row = 0, col = 0;
+int init_display_height;
+int init_display_width;
+bool INPUT_FLAG = true;
 bool hook;
 int PORT;
 std::string  credentials_file;
@@ -183,105 +173,43 @@ void start_server(bool power_switch){
 
 };
 
-int establish_MITM(std::string netiface, std::string ip_addr, std::string port){
-
-    system(("ip link set %i down", netiface).c_str());
-    system(("ip addr add %a dev %i", ip_addr, netiface).c_str());
-    try {
-        system(("iwconfig %i mode monitor", netiface).c_str());
-        termcolorprint("green" , "[+] Monitor Mode Enabled");
-        } catch (std::exception& e) {
-            auto errortext = e.what();
-            errprint(errortext);
-            termcolorprint("yellow" , "[-] Failed to set monitor mode");
-            return 1;
-        };
-    system(("ip link set %i up", netiface).c_str());
-
-    termcolorprint("green" ,"[+]Clearing IP Tables Rulesets");
-    system("iptables -w 3 --flush");
-    system("iptables -w 3 --table nat --flush");
-    system("iptables -w 3 --delete-chain");
-    system("iptables -w 3 --table nat --delete-chain");
-
-    termcolorprint("green" ,"[+]enable ip Forwarding");
-    system("echo 1 > /proc/sys/net/ipv4/ip_forward");
-
-    termcolorprint("green" ,"[+]Setup a NAT environment");
-    system(("iptables -w 3 --table nat --append POSTROUTING --out-interface %i -j MASQUERADE", netiface).c_str());
-
-    termcolorprint("yellow" , ".. Block all traffic in");
-    system(("iptables -w 3 -A FORWARD -i %i -j DROP", netiface).c_str());
-
-    termcolorprint("green" ,"[+]allow incomming from the outside on the monitor iface");
-    system(("iptables -w 3 --append FORWARD --in-interface %i -j ACCEPT", netiface).c_str());
-
-    termcolorprint("green" ,"[+]allow UDP DNS resolution inside the NAT  via prerouting");
-    system(("iptables -w 3 -t nat -A PREROUTING -p udp --dport 53 -j DNAT --to ", ip_addr).c_str());
-
-    termcolorprint("green" ,"[+]Allow Loopback Connections");
-    system("iptables -w 3 -A INPUT -i lo -j ACCEPT");
-    system("iptables -w 3 -A OUTPUT -o lo -j ACCEPT");
-
-    termcolorprint("green" ,"[+]Allow Established and Related Incoming Connections");
-    system("iptables -w 3 -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT");
-
-    termcolorprint("green" ,"[+]Allow Established Outgoing Connections");
-    system("iptables -w 3 -A OUTPUT -m conntrack --ctstate ESTABLISHED -j ACCEPT");
-
-    //#termcolorprint("green" ,("[+]Internal to External")
-    //system("iptables -w 3 -A FORWARD -i {0} -o {1} -j ACCEPT".format(moniface, iface))
-
-    termcolorprint("green" ,"[+]Drop Invalid Packets");
-    system("iptables -w 3 -A INPUT -m conntrack --ctstate INVALID -j DROP");
-    system("iptables -w 3 -A FORWARD -i %i -p tcp --dport 53 -j ACCEPT");
-    system("iptables -w 3 -A FORWARD -i %i -p udp --dport 53 -j ACCEPT");
-
-    termcolorprint("yellow" , ".. Allow traffic to captive portal");
-    system(("iptables -w 3 -A FORWARD -i %i -p tcp --dport %p -d %i -j ACCEPT", netiface, port, ip_addr).c_str());
-/*   ###################################################
-    #
-    #       HERE IS WHERE THE WERVER IS STARTED
-    #
-    #
-    ###################################################*/
-    termcolorprint("green" ,"Redirecting HTTP traffic to captive portal");
-    system(("iptables -t nat -A PREROUTING -i %i -p tcp --dport 80 -j DNAT --to-destination %d", netiface, ip_addr).c_str());
-
-};
 int main(int argc, char* argv[]) {
-// we put things we only want done at the start at the top
-// once the loops start, shit gets real.
-// even though main() is a "loop", its easier to keep things functional  and orderly
-// by reading it like a book instead of like a mobeius strip. no looping main() please.
-// its got a start and a finish. unless you need otherwise.
 
-    term_init();
-    auto pwd = filesystem::current_path();
-    parse_commandline(argc, argv);
+    try {
+        initscr();
+        if (stdscr == NULL ) {
+            printf("ERROR: init() failed");
+        };
+    } catch (std::exception& e) {
+        auto errortext = e.what();
+        printf(errortext);
+        return 1;
+        };
+    //wmove(stdscr, 50,50);
+    cbreak();
+    nodelay(stdscr, true);
+    getmaxyx(stdscr, init_display_height, init_display_width);
+    start_color();
+    keypad(stdscr, TRUE);
+    refresh();
     fflush(stdin);
-    start_server();
     INPUT_FLAG = true;
-    output_window = subwin(window, row - 1, col, 0, 0);
-    scrollok(output_window, true);
-    input_window = subwin(window, 1, col, row - 1, 0);
+    scrollok(stdscr, true);
+    output_window = newpad(2046, init_display_width);
+    wprintw(stdscr, "test");
 
-    //beginning thw main loop in the main loop, remember ,its gonna keep looping from top to bottom constantly
-    // until it hits a break or exit()
+    //scrollok(output_window, true);
+    //input_window = subwin(main_window , 1, init_display_width , LINES -1, 0);
+    //touchwin(output_window);
+    //wmove(input_window, LINES -1, 0);
+    //wbkgd(output_window, COLOR_PAIR(1));
+    signal(SIGWINCH, resizehandler);
     while(1)
     {
-        //if we get a window resize signal, redraw the curses display
-        signal(SIGWINCH, resizehandler);
-
-        if(input == "quit"){
-
-            break;
-        } else {
-            get_command();
-        };
+        get_command();
+    };
     endwin();
     };
-};
 
 
 
