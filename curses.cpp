@@ -1,6 +1,10 @@
 #include "everythingelse.hpp"
 
-
+WINDOW* output_window;
+//WINDOW* input_window;
+std::vector<string> output_buffer;
+std::vector<char> input_buffer;
+std::string input_buffer_string;
 bool INPUT_FLAG = true;
 
 using namespace std;

@@ -13,17 +13,14 @@
 #include <bits/stdc++.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <boost/filesystem.hpp>
 
 #include </usr/include/stdio.h>
 
 using namespace std;
 
 //WINDOW* main_window;
-WINDOW* output_window;
-//WINDOW* input_window;
-std::vector<string> output_buffer;
-std::vector<char> input_buffer;
-std::string input_buffer_string;
+
 void update_window(WINDOW* , std::string);
 void termcolorprint(std::string, std::string);
 void errprint(auto);
@@ -32,7 +29,9 @@ void get_command();
 void update_output_window();
 void shutdown_server();
 std::string string_vector_to_string(std::vector<char> );
-
+std::string generate_sha1hash(unsigned char);
+int save_password (std::string , std::string , std::string );
+bool retrieve_credentials_legal(std::string , std::string , std::string );
 
 
 #endif

