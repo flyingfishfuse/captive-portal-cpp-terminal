@@ -32,7 +32,7 @@ std::string string_vector_to_string(std::vector<char> );
 std::string generate_sha1hash(unsigned char);
 int save_password (std::string , std::string , std::string );
 bool retrieve_credentials_legal(std::string , std::string , std::string );
-
+std::string make_html(std::string, std::string, std::string, bool);
 
 #endif
 
