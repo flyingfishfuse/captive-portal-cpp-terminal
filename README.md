@@ -16,3 +16,6 @@ the following libraries are needed ta this point to compile:
   If you choose to use someone elses network,  I give you a few choices how.
  
   I also give you the option to beefhook every host that gets caught in the attack
+  
+  TODOTOFU:
+  You aren't zeroing out entered passwords as far as I can tell, those could end up latent on the stack/heap.
