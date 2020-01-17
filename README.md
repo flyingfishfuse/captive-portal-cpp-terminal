@@ -9,9 +9,9 @@ the following libraries are needed ta this point to compile:
   Boost/filesystem
   Boost/program_options 
   
-  I'm NOT going ot be done iwth this for. aLong time but I'm going to make this my primary project... it has enough different parts I can jump around to keep rfom burning out on amy one single part. Its also neato and useful and I haven't seen what I'm trying ot do except for fluxion and its older and doesn't do what Im planning.
+  I'm NOT going ot be done with this for a long time but I'm going to make this my primary project... it has enough different parts I can jump around to keep from burning out on any one single part. Its also neato and useful and I haven't seen what I'm trying to do except for fluxion and its older and doesn't do what Im planning.
   
-  The idea of htis tool is that it presents a captive portal setup to the network of your choice. You can either choose to make this YOUR network or SOMEONE ELSE'S (illegal without permission) 
+  The idea of this tool is that it presents a captive portal setup to the network of your choice. You can either choose to make this YOUR network or SOMEONE ELSE'S (illegal without permission) 
   
   If you choose to use someone elses network,  I give you a few choices how.
  
